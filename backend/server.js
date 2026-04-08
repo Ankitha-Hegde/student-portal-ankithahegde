@@ -49,13 +49,30 @@ app.get('/api/submissions', (req, res) => {
 
 // API endpoint to submit a new contact form entry
 app.post('/api/submissions', (req, res) => {
-    const newSubmission = req.body;
-    if (!newSubmission.name || !newSubmission.email || !newSubmission.message) {
-        return res.status(400).json({ message: 'All fields (name, email, message) are required.' });
+    const { name, email, message } = req.body;
+    
+    // Server-side Validation Constraints
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!name || name.length > 50) {
+        return res.status(400).json({ message: 'Name is required and must be under 50 characters.' });
+    }
+    if (!email || !EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ message: 'A valid email address is required.' });
+    }
+    if (!message || message.length > 500) {
+        return res.status(400).json({ message: 'Message is required and must be under 500 characters.' });
     }
 
     const data = readData();
-    newSubmission.id = Date.now().toString(); // Simple unique ID
+    const newSubmission = {
+        id: Date.now().toString(),
+        name,
+        email,
+        message,
+        timestamp: new Date().toISOString()
+    };
+    
     data.submissions.push(newSubmission);
     writeData(data);
     res.status(201).json({ message: 'Submission received successfully!', submission: newSubmission });

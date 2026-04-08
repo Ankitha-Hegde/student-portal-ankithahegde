@@ -1,218 +1,210 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Navigation Logic ---
+    // --- Navigation & Constants ---
     const nav = document.querySelector('nav');
     const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
+    const CONSTRAINTS = {
+        NAME_MAX: 50,
+        MESSAGE_MAX: 500,
+        EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    };
 
     function updateNavigation() {
         if (!nav) return;
+        const path = window.location.pathname;
+        const links = [
+            { href: '/', text: 'Home', icon: 'fa-home' },
+            { href: '/about.html', text: 'About', icon: 'fa-info-circle' },
+            { href: '/services.html', text: 'Services', icon: 'fa-sparkles' },
+            { href: '/contact.html', text: 'Contact', icon: 'fa-paper-plane' }
+        ];
         
-        // Clear current nav but keep constant links
-        const constantLinks = `
-            <a href="/">Home</a>
-            <a href="/about.html">About</a>
-            <a href="/services.html">Services</a>
-            <a href="/contact.html">Contact</a>
-        `;
+        let html = links.map(l => `
+            <a href="${l.href}" class="${path === l.href || (path === '/' && l.href === '/') ? 'active' : ''}">
+                <i class="fas ${l.icon}"></i> <span>${l.text}</span>
+            </a>
+        `).join('');
         
-        let dynamicLinks = '';
         if (isLoggedIn) {
-            dynamicLinks += '<a href="/admin.html">Admin</a>';
-            dynamicLinks += '<a href="#" id="logoutLink">Logout</a>';
+            html += `<a href="/admin.html" class="${path === '/admin.html' ? 'active' : ''}"><i class="fas fa-shield-halved"></i> <span>Admin</span></a>`;
+            html += `<a href="#" id="logoutLink"><i class="fas fa-power-off"></i> <span>Logout</span></a>`;
         } else {
-            dynamicLinks += '<a href="/login.html">Login</a>';
+            html += `<a href="/login.html" class="${path === '/login.html' ? 'active' : ''}"><i class="fas fa-user-lock"></i> <span>Login</span></a>`;
         }
-        
-        nav.innerHTML = constantLinks + dynamicLinks;
+        nav.innerHTML = html;
 
-        const logoutLink = document.getElementById('logoutLink');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                localStorage.removeItem('loggedIn');
-                window.location.href = '/login.html';
-            });
-        }
+        const logout = document.getElementById('logoutLink');
+        if (logout) logout.onclick = (e) => {
+            e.preventDefault();
+            localStorage.removeItem('loggedIn');
+            window.location.href = '/login.html';
+        };
     }
 
     updateNavigation();
 
-    // --- Services Page - Request Info ---
+    // --- Services Page ---
     document.querySelectorAll('.req-info').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const service = btn.getAttribute('data-service');
-            sessionStorage.setItem('requestedService', service);
+        btn.onclick = () => {
+            sessionStorage.setItem('requestedService', btn.getAttribute('data-service'));
             window.location.href = '/contact.html';
-        });
+        };
     });
 
-    // --- Contact Form Submission ---
+    // --- Contact Form with Strict Constraints ---
     const contactForm = document.getElementById('contactForm');
-    const formMessage = document.getElementById('formMessage');
+    const formMsg = document.getElementById('formMessage');
 
     if (contactForm) {
-        // Pre-fill message if redirected from services
-        const requestedService = sessionStorage.getItem('requestedService');
-        if (requestedService) {
-            const messageField = document.getElementById('message');
-            if (messageField) {
-                messageField.value = `I am interested in ${requestedService}. Please provide more information.`;
-            }
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const msgInput = document.getElementById('message');
+
+        // Add character counters
+        msgInput.insertAdjacentHTML('afterend', `<div class="char-counter"><span id="msgCount">0</span>/${CONSTRAINTS.MESSAGE_MAX}</div>`);
+        
+        msgInput.oninput = () => {
+            const len = msgInput.value.length;
+            document.getElementById('msgCount').textContent = len;
+            document.getElementById('msgCount').style.color = len > CONSTRAINTS.MESSAGE_MAX ? 'var(--error)' : 'inherit';
+        };
+
+        // Pre-fill
+        const service = sessionStorage.getItem('requestedService');
+        if (service) {
+            msgInput.value = `Hello! I'm interested in ${service}. Please provide more details.`;
+            msgInput.dispatchEvent(new Event('input'));
             sessionStorage.removeItem('requestedService');
         }
 
-        contactForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(contactForm);
-            const data = Object.fromEntries(formData.entries());
+        contactForm.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            // Front-end Constraints
+            if (nameInput.value.length > CONSTRAINTS.NAME_MAX) return alert('Name is too long!');
+            if (!CONSTRAINTS.EMAIL_REGEX.test(emailInput.value)) return alert('Invalid email format!');
+            if (msgInput.value.length > CONSTRAINTS.MESSAGE_MAX) return alert('Message is too long!');
+
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
 
             try {
-                const response = await fetch('/api/submissions', {
+                const res = await fetch('/api/submissions', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.fromEntries(new FormData(contactForm)))
                 });
 
-                const result = await response.json();
-
-                if (response.ok) {
-                    formMessage.textContent = result.message;
-                    formMessage.className = 'success';
+                const result = await res.json();
+                formMsg.style.display = 'block';
+                if (res.ok) {
+                    formMsg.innerHTML = `<i class="fas fa-star"></i> ${result.message}`;
+                    formMsg.className = 'success';
                     contactForm.reset();
+                    document.getElementById('msgCount').textContent = '0';
                 } else {
-                    formMessage.textContent = result.message || 'Error submitting form.';
-                    formMessage.className = 'error';
+                    formMsg.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${result.message}`;
+                    formMsg.className = 'error';
                 }
-            } catch (error) {
-                console.error('Network error:', error);
-                formMessage.textContent = 'Network error. Please try again.';
-                formMessage.className = 'error';
+            } catch (err) {
+                formMsg.style.display = 'block';
+                formMsg.innerHTML = `<i class="fas fa-wifi"></i> Connection failed.`;
+                formMsg.className = 'error';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
             }
-        });
+        };
     }
 
-    // --- Login Form Submission ---
+    // --- Login Form ---
     const loginForm = document.getElementById('loginForm');
-    const loginMessage = document.getElementById('loginMessage');
-
     if (loginForm) {
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(loginForm);
-            const data = Object.fromEntries(formData.entries());
+        loginForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = loginForm.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-key fa-fade"></i> Authenticating...';
 
             try {
-                const response = await fetch('/api/login', {
+                const res = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.fromEntries(new FormData(loginForm)))
                 });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    loginMessage.textContent = result.message;
-                    loginMessage.className = 'success';
+                const result = await res.json();
+                if (res.ok && result.success) {
                     localStorage.setItem('loggedIn', 'true');
                     window.location.href = '/admin.html';
                 } else {
-                    loginMessage.textContent = result.message || 'Login failed.';
-                    loginMessage.className = 'error';
+                    const lMsg = document.getElementById('loginMessage');
+                    lMsg.style.display = 'block';
+                    lMsg.innerHTML = `<i class="fas fa-lock"></i> ${result.message}`;
+                    lMsg.className = 'error';
                 }
-            } catch (error) {
-                console.error('Network error:', error);
-                loginMessage.textContent = 'Network error. Please try again.';
-                loginMessage.className = 'error';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
             }
-        });
+        };
     }
 
-    // --- Admin Page - Fetch Submissions ---
-    const submissionsTableContainer = document.getElementById('submissionsTableContainer');
-    const adminMessage = document.getElementById('adminMessage');
-
-    if (submissionsTableContainer && window.location.pathname === '/admin.html') {
+    // --- Admin Page ---
+    const subTable = document.getElementById('submissionsTableContainer');
+    if (subTable && window.location.pathname === '/admin.html') {
         if (!isLoggedIn) {
-            adminMessage.textContent = 'Access Denied. Please log in first.';
-            adminMessage.className = 'error';
-            submissionsTableContainer.innerHTML = '';
-            setTimeout(() => {
-                window.location.href = '/login.html';
-            }, 2000);
+            window.location.href = '/login.html';
             return;
         }
-
         fetchSubmissions();
     }
 
     async function fetchSubmissions() {
         try {
-            const response = await fetch('/api/submissions');
-            const submissions = await response.json();
+            const res = await fetch('/api/submissions');
+            const data = await res.json();
 
-            if (response.ok) {
-                if (submissions.length === 0) {
-                    submissionsTableContainer.innerHTML = '<p>No submissions yet.</p>';
+            if (res.ok) {
+                if (data.length === 0) {
+                    subTable.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.6;"><i class="fas fa-box-open fa-3x"></i><p>Clean inbox!</p></div>`;
                     return;
                 }
 
-                let tableHTML = '<table>';
-                tableHTML += '<thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th><th>Actions</th></tr></thead>';
-                tableHTML += '<tbody>';
-                submissions.forEach(sub => {
-                    tableHTML += `
-                        <tr>
-                            <td>${sub.id}</td>
-                            <td>${sub.name}</td>
-                            <td>${sub.email}</td>
-                            <td>${sub.message}</td>
-                            <td><button class="delete-btn" data-id="${sub.id}">Delete</button></td>
-                        </tr>
-                    `;
-                });
-                tableHTML += '</tbody></table>';
-                submissionsTableContainer.innerHTML = tableHTML;
-
-                // Add event listeners to delete buttons
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        const id = btn.getAttribute('data-id');
-                        if (confirm('Are you sure you want to delete this submission?')) {
-                            await deleteSubmission(id);
-                        }
-                    });
-                });
-            } else {
-                adminMessage.textContent = 'Error fetching submissions.';
-                adminMessage.className = 'error';
-                submissionsTableContainer.innerHTML = '';
+                subTable.innerHTML = `
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Message</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(s => `
+                                    <tr>
+                                        <td>
+                                            <strong>${s.name}</strong><br>
+                                            <small><a href="mailto:${s.email}">${s.email}</a></small>
+                                        </td>
+                                        <td title="${s.message}">${s.message.substring(0, 50)}${s.message.length > 50 ? '...' : ''}</td>
+                                        <td>
+                                            <button class="delete-btn" onclick="deleteSub('${s.id}')">
+                                                <i class="fas fa-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
             }
-        } catch (error) {
-            console.error('Network error:', error);
-            adminMessage.textContent = 'Network error. Please try again.';
-            adminMessage.className = 'error';
-            submissionsTableContainer.innerHTML = '';
-        }
+        } catch (e) {}
     }
 
-    async function deleteSubmission(id) {
-        try {
-            const response = await fetch(`/api/submissions/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                fetchSubmissions(); // Refresh the table
-            } else {
-                const result = await response.json();
-                alert(result.message || 'Error deleting submission.');
-            }
-        } catch (error) {
-            console.error('Network error:', error);
-            alert('Network error. Please try again.');
-        }
-    }
+    window.deleteSub = async (id) => {
+        if (!confirm('Permanently delete this entry?')) return;
+        await fetch(`/api/submissions/${id}`, { method: 'DELETE' });
+        fetchSubmissions();
+    };
 });

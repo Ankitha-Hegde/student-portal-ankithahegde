@@ -4,9 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Portal - Home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <div class="background-3d">
+        <div class="shape cube"></div>
+        <div class="shape sphere"></div>
+        <div class="shape torus"></div>
+    </div>
     <header>
         <nav>
             <a href="/">Home</a>
@@ -18,9 +27,26 @@
         </nav>
     </header>
     <main>
-        <h1>Welcome to the Student Service Portal!</h1>
-        <p>Your one-stop solution for all student-related services and information.</p>
-        <p>Explore our services, get in touch, or manage your data through the admin panel.</p>
+        <h1>Welcome to the Student Service Portal</h1>
+        <p>Your one-stop digital hub for essential university resources and support. We're here to help you navigate your academic journey with ease.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px;">
+            <div style="padding: 20px; background: #f8fafc; border-radius: 10px; text-align: center; border: 1px solid var(--border-color);">
+                <i class="fas fa-graduation-cap fa-2x" style="color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3>Academic</h3>
+                <p style="font-size: 0.875rem;">Advising & Support</p>
+            </div>
+            <div style="padding: 20px; background: #f8fafc; border-radius: 10px; text-align: center; border: 1px solid var(--border-color);">
+                <i class="fas fa-rocket fa-2x" style="color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3>Careers</h3>
+                <p style="font-size: 0.875rem;">Counseling & Jobs</p>
+            </div>
+            <div style="padding: 20px; background: #f8fafc; border-radius: 10px; text-align: center; border: 1px solid var(--border-color);">
+                <i class="fas fa-heart fa-2x" style="color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3>Life</h3>
+                <p style="font-size: 0.875rem;">Student Activities</p>
+            </div>
+        </div>
     </main>
     <footer>
         <p>&copy; 2026 Student Service Portal</p>
