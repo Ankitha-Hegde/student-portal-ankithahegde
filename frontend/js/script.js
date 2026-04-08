@@ -12,23 +12,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!nav) return;
         const path = window.location.pathname;
         const links = [
-            { href: '/', text: 'Home', icon: 'fa-home' },
-            { href: '/about.html', text: 'About', icon: 'fa-info-circle' },
-            { href: '/services.html', text: 'Services', icon: 'fa-sparkles' },
-            { href: '/contact.html', text: 'Contact', icon: 'fa-paper-plane' }
+            { href: '/', text: 'Home', icon: 'fa-terminal' },
+            { href: '/about.html', text: 'About', icon: 'fa-microchip' },
+            { href: '/services.html', text: 'Services', icon: 'fa-layer-group' },
+            { href: '/contact.html', text: 'Contact', icon: 'fa-code-branch' }
         ];
         
         let html = links.map(l => `
             <a href="${l.href}" class="${path === l.href || (path === '/' && l.href === '/') ? 'active' : ''}">
-                <i class="fas ${l.icon}"></i> <span>${l.text}</span>
+                <i class="fas ${l.icon}"></i> ${l.text}
             </a>
         `).join('');
         
         if (isLoggedIn) {
-            html += `<a href="/admin.html" class="${path === '/admin.html' ? 'active' : ''}"><i class="fas fa-shield-halved"></i> <span>Admin</span></a>`;
-            html += `<a href="#" id="logoutLink"><i class="fas fa-power-off"></i> <span>Logout</span></a>`;
+            html += `<a href="/admin.html" class="${path === '/admin.html' ? 'active' : ''}"><i class="fas fa-user-secret"></i> Admin</a>`;
+            html += `<a href="#" id="logoutLink"><i class="fas fa-power-off"></i> Logout</a>`;
         } else {
-            html += `<a href="/login.html" class="${path === '/login.html' ? 'active' : ''}"><i class="fas fa-user-lock"></i> <span>Login</span></a>`;
+            html += `<a href="/login.html" class="${path === '/login.html' ? 'active' : ''}"><i class="fas fa-fingerprint"></i> Login</a>`;
         }
         nav.innerHTML = html;
 
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
-    // --- Contact Form with Strict Constraints ---
+    // --- Contact Form ---
     const contactForm = document.getElementById('contactForm');
     const formMsg = document.getElementById('formMessage');
 
@@ -60,18 +60,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const msgInput = document.getElementById('message');
 
         // Add character counters
-        msgInput.insertAdjacentHTML('afterend', `<div class="char-counter"><span id="msgCount">0</span>/${CONSTRAINTS.MESSAGE_MAX}</div>`);
+        msgInput.insertAdjacentHTML('afterend', `<div class="char-counter">>_ BUFFER: <span id="msgCount">0</span>/${CONSTRAINTS.MESSAGE_MAX}</div>`);
         
         msgInput.oninput = () => {
             const len = msgInput.value.length;
             document.getElementById('msgCount').textContent = len;
-            document.getElementById('msgCount').style.color = len > CONSTRAINTS.MESSAGE_MAX ? 'var(--error)' : 'inherit';
+            document.getElementById('msgCount').style.color = len > CONSTRAINTS.MESSAGE_MAX ? 'var(--secondary)' : 'var(--primary)';
         };
 
         // Pre-fill
         const service = sessionStorage.getItem('requestedService');
         if (service) {
-            msgInput.value = `Hello! I'm interested in ${service}. Please provide more details.`;
+            msgInput.value = `// REQUEST_SERVICE: ${service}\n// INQUIRY: `;
             msgInput.dispatchEvent(new Event('input'));
             sessionStorage.removeItem('requestedService');
         }
@@ -79,14 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
         contactForm.onsubmit = async (e) => {
             e.preventDefault();
             
-            // Front-end Constraints
-            if (nameInput.value.length > CONSTRAINTS.NAME_MAX) return alert('Name is too long!');
-            if (!CONSTRAINTS.EMAIL_REGEX.test(emailInput.value)) return alert('Invalid email format!');
-            if (msgInput.value.length > CONSTRAINTS.MESSAGE_MAX) return alert('Message is too long!');
-
             const submitBtn = contactForm.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+            submitBtn.innerHTML = 'UPLOADING_DATA...';
 
             try {
                 const res = await fetch('/api/submissions', {
@@ -98,21 +93,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await res.json();
                 formMsg.style.display = 'block';
                 if (res.ok) {
-                    formMsg.innerHTML = `<i class="fas fa-star"></i> ${result.message}`;
+                    formMsg.innerHTML = `[SUCCESS]: ${result.message}`;
                     formMsg.className = 'success';
                     contactForm.reset();
                     document.getElementById('msgCount').textContent = '0';
                 } else {
-                    formMsg.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ${result.message}`;
+                    formMsg.innerHTML = `[ERROR]: ${result.message}`;
                     formMsg.className = 'error';
                 }
             } catch (err) {
                 formMsg.style.display = 'block';
-                formMsg.innerHTML = `<i class="fas fa-wifi"></i> Connection failed.`;
+                formMsg.innerHTML = `[CRITICAL_FAILURE]: NETWORK_LOST`;
                 formMsg.className = 'error';
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
+                submitBtn.innerHTML = 'Send Message';
             }
         };
     }
@@ -124,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const btn = loginForm.querySelector('button');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-key fa-fade"></i> Authenticating...';
+            btn.innerHTML = 'BYPASSING_FIREWALL...';
 
             try {
                 const res = await fetch('/api/login', {
@@ -139,12 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     const lMsg = document.getElementById('loginMessage');
                     lMsg.style.display = 'block';
-                    lMsg.innerHTML = `<i class="fas fa-lock"></i> ${result.message}`;
+                    lMsg.innerHTML = `[DENIED]: ACCESS_RESTRICTED`;
                     lMsg.className = 'error';
                 }
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+                btn.innerHTML = 'Login';
             }
         };
     }
@@ -166,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok) {
                 if (data.length === 0) {
-                    subTable.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.6;"><i class="fas fa-box-open fa-3x"></i><p>Clean inbox!</p></div>`;
+                    subTable.innerHTML = `<div style="text-align:center; padding:50px; opacity:0.6;"><i class="fas fa-ghost fa-3x"></i><p>DATABASE_EMPTY</p></div>`;
                     return;
                 }
 
@@ -175,22 +170,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Student</th>
-                                    <th>Message</th>
-                                    <th>Actions</th>
+                                    <th>OBJECT_ID</th>
+                                    <th>CONTENT_PREVIEW</th>
+                                    <th>CMD</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${data.map(s => `
                                     <tr>
                                         <td>
-                                            <strong>${s.name}</strong><br>
-                                            <small><a href="mailto:${s.email}">${s.email}</a></small>
+                                            <span style="color:var(--primary)">#${s.name}</span><br>
+                                            <small>${s.email}</small>
                                         </td>
-                                        <td title="${s.message}">${s.message.substring(0, 50)}${s.message.length > 50 ? '...' : ''}</td>
+                                        <td title="${s.message}">${s.message.substring(0, 40)}...</td>
                                         <td>
                                             <button class="delete-btn" onclick="deleteSub('${s.id}')">
-                                                <i class="fas fa-trash-can"></i>
+                                                DEL
                                             </button>
                                         </td>
                                     </tr>
@@ -203,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.deleteSub = async (id) => {
-        if (!confirm('Permanently delete this entry?')) return;
+        if (!confirm('EXECUTE_DELETE?')) return;
         await fetch(`/api/submissions/${id}`, { method: 'DELETE' });
         fetchSubmissions();
     };
