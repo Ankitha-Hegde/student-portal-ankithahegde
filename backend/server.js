@@ -61,6 +61,21 @@ app.post('/api/submissions', (req, res) => {
     res.status(201).json({ message: 'Submission received successfully!', submission: newSubmission });
 });
 
+// API endpoint to delete a submission
+app.delete('/api/submissions/:id', (req, res) => {
+    const { id } = req.params;
+    const data = readData();
+    const initialLength = data.submissions.length;
+    data.submissions = data.submissions.filter(sub => sub.id !== id);
+
+    if (data.submissions.length < initialLength) {
+        writeData(data);
+        res.status(200).json({ message: 'Submission deleted successfully.' });
+    } else {
+        res.status(404).json({ message: 'Submission not found.' });
+    }
+});
+
 // Basic Login (for demonstration purposes)
 // In a real application, this would involve proper authentication
 app.post('/api/login', (req, res) => {

@@ -1,9 +1,65 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Navigation Logic ---
+    const nav = document.querySelector('nav');
+    const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
+
+    function updateNavigation() {
+        if (!nav) return;
+        
+        // Clear current nav but keep constant links
+        const constantLinks = `
+            <a href="/">Home</a>
+            <a href="/about.html">About</a>
+            <a href="/services.html">Services</a>
+            <a href="/contact.html">Contact</a>
+        `;
+        
+        let dynamicLinks = '';
+        if (isLoggedIn) {
+            dynamicLinks += '<a href="/admin.html">Admin</a>';
+            dynamicLinks += '<a href="#" id="logoutLink">Logout</a>';
+        } else {
+            dynamicLinks += '<a href="/login.html">Login</a>';
+        }
+        
+        nav.innerHTML = constantLinks + dynamicLinks;
+
+        const logoutLink = document.getElementById('logoutLink');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('loggedIn');
+                window.location.href = '/login.html';
+            });
+        }
+    }
+
+    updateNavigation();
+
+    // --- Services Page - Request Info ---
+    document.querySelectorAll('.req-info').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const service = btn.getAttribute('data-service');
+            sessionStorage.setItem('requestedService', service);
+            window.location.href = '/contact.html';
+        });
+    });
+
     // --- Contact Form Submission ---
     const contactForm = document.getElementById('contactForm');
     const formMessage = document.getElementById('formMessage');
 
     if (contactForm) {
+        // Pre-fill message if redirected from services
+        const requestedService = sessionStorage.getItem('requestedService');
+        if (requestedService) {
+            const messageField = document.getElementById('message');
+            if (messageField) {
+                messageField.value = `I am interested in ${requestedService}. Please provide more information.`;
+            }
+            sessionStorage.removeItem('requestedService');
+        }
+
         contactForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const formData = new FormData(contactForm);
@@ -60,8 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok && result.success) {
                     loginMessage.textContent = result.message;
                     loginMessage.className = 'success';
-                    // For a real app, store a token or session. For this prototype, a simple redirect.
-                    localStorage.setItem('loggedIn', 'true'); // Simple flag
+                    localStorage.setItem('loggedIn', 'true');
                     window.location.href = '/admin.html';
                 } else {
                     loginMessage.textContent = result.message || 'Login failed.';
@@ -80,12 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminMessage = document.getElementById('adminMessage');
 
     if (submissionsTableContainer && window.location.pathname === '/admin.html') {
-        // Check if logged in (very basic check for prototype)
-        if (localStorage.getItem('loggedIn') !== 'true') {
+        if (!isLoggedIn) {
             adminMessage.textContent = 'Access Denied. Please log in first.';
             adminMessage.className = 'error';
-            submissionsTableContainer.innerHTML = ''; // Clear loading message
-            // Optionally redirect to login page
+            submissionsTableContainer.innerHTML = '';
             setTimeout(() => {
                 window.location.href = '/login.html';
             }, 2000);
@@ -107,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 let tableHTML = '<table>';
-                tableHTML += '<thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th></tr></thead>';
+                tableHTML += '<thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th><th>Actions</th></tr></thead>';
                 tableHTML += '<tbody>';
                 submissions.forEach(sub => {
                     tableHTML += `
@@ -116,11 +169,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td>${sub.name}</td>
                             <td>${sub.email}</td>
                             <td>${sub.message}</td>
+                            <td><button class="delete-btn" data-id="${sub.id}">Delete</button></td>
                         </tr>
                     `;
                 });
                 tableHTML += '</tbody></table>';
                 submissionsTableContainer.innerHTML = tableHTML;
+
+                // Add event listeners to delete buttons
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const id = btn.getAttribute('data-id');
+                        if (confirm('Are you sure you want to delete this submission?')) {
+                            await deleteSubmission(id);
+                        }
+                    });
+                });
             } else {
                 adminMessage.textContent = 'Error fetching submissions.';
                 adminMessage.className = 'error';
@@ -131,6 +195,24 @@ document.addEventListener('DOMContentLoaded', () => {
             adminMessage.textContent = 'Network error. Please try again.';
             adminMessage.className = 'error';
             submissionsTableContainer.innerHTML = '';
+        }
+    }
+
+    async function deleteSubmission(id) {
+        try {
+            const response = await fetch(`/api/submissions/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                fetchSubmissions(); // Refresh the table
+            } else {
+                const result = await response.json();
+                alert(result.message || 'Error deleting submission.');
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            alert('Network error. Please try again.');
         }
     }
 });
